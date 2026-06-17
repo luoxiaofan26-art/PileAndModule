@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>充电机与充电模块国网通信协议解析器 — 功率控制模块 ↔ 充电模块</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --panel-bg: #16213e;
+            --border: #0f3460;
+            --accent: #e94560;
+            --text: #e0e0e0;
+            --header-bg: #0f3460;
+            --success: #00c853;
+            --warn: #ffc107;
+            --info: #2196f3;
+            --purple: #9c27b0;
+            --cyan: #00e5ff;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        header {
+            background: linear-gradient(135deg, #0f3460, #1a1a2e);
+            padding: 20px 30px;
+            border-bottom: 2px solid var(--accent);
+            text-align: center;
+        }
+        header h1 {
+            font-size: 1.8em;
+            color: #fff;
+            letter-spacing: 2px;
+        }
+        header p {
+            font-size: .9em;
+            color: #aaa;
+            margin-top: 5px;
+        }
+        .container {
+            max-width: 1700px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .input-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .input-section label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+            letter-spacing: 1px;
+            display: block;
+        }
+        .input-section label .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: var(--info);
+        }
+        .input-section textarea {
+            width: 100%;
+            height: 120px;
+            background: #0d1b2a;
+            border: 1px solid var(--border);
+            color: #00e5ff;
+            font-family: Consolas, monospace;
+            font-size: .92em;
+            padding: 12px;
+            border-radius: 6px;
+            resize: vertical;
+            outline: none;
+            line-height: 1.6;
+        }
+        .input-section textarea:focus {
+            border-color: var(--accent);
+        }
+        .input-section .hint {
+            color: #888;
+            font-size: .76em;
+            margin-top: 5px;
+        }
+        .input-section .mode-hint {
+            color: var(--warn);
+            font-size: .8em;
+            margin-top: 8px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 26px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: .95em;
+            font-weight: bold;
+            letter-spacing: 1px;
+            transition: all .3s;
+            white-space: nowrap;
+        }
+        .btn-parse {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-parse:hover {
+            background: #ff5a7a;
+            transform: translateY(-1px);
+        }
+        .btn-clear {
+            background: #333;
+            color: #ccc;
+        }
+        .btn-clear:hover {
+            background: #555;
+        }
+        .btn-example {
+            background: transparent;
+            color: var(--info);
+            border: 1px solid var(--info);
+            font-size: .82em;
+            padding: 8px 14px;
+        }
+        .btn-example:hover {
+            background: rgba(33, 150, 243, .15);
+        }
+        .btn-tp {
+            background: transparent;
+            color: var(--warn);
+            border: 1px solid var(--warn);
+            font-size: .82em;
+            padding: 8px 14px;
+        }
+        .btn-tp:hover {
+            background: rgba(255, 193, 7, .15);
+        }
+
+        .main-panel {
+            display: flex;
+            gap: 20px;
+        }
+        .left-panel,
+        .right-panel {
+            flex: 1;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .panel-header {
+            background: var(--header-bg);
+            padding: 12px 18px;
+            font-weight: bold;
+            font-size: 1.05em;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-header .dot-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .panel-content {
+            padding: 18px;
+            max-height: 700px;
+            overflow-y: auto;
+        }
+
+        .msg-identify {
+            background: linear-gradient(135deg, #0d2137, #0f3460);
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 18px;
+        }
+        .msg-identify .msg-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #fff;
+        }
+        .msg-identify .msg-meta {
+            margin-top: 6px;
+            font-size: .85em;
+            color: #aaa;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .msg-identify .msg-meta span {
+            color: var(--accent);
+        }
+        .msg-identify.unknown {
+            border-color: #555;
+            background: linear-gradient(135deg, #1a1a1a, #222);
+        }
+        .msg-identify.unknown .msg-name {
+            color: #888;
+        }
+
+        .frame-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .info-badge {
+            background: #0d1b2a;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 7px 12px;
+            font-family: Consolas, monospace;
+            font-size: .88em;
+        }
+        .info-badge span {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .field-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .88em;
+        }
+        .field-table th {
+            background: var(--header-bg);
+            padding: 8px 10px;
+            text-align: left;
+            font-size: .83em;
+            letter-spacing: 1px;
+        }
+        .field-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+            font-family: Consolas, monospace;
+            font-size: .85em;
+        }
+        .field-table tr:hover td {
+            background: rgba(26, 58, 92, .4);
+        }
+        .val-hex {
+            color: #00e5ff;
+        }
+        .val-bin {
+            color: #ffab40;
+            font-size: .78em;
+        }
+        .val-dec {
+            color: #69f0ae;
+        }
+
+        .tp-section {
+            margin-bottom: 16px;
+        }
+        .tp-section-title {
+            color: var(--warn);
+            font-weight: bold;
+            font-size: .88em;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed rgba(255, 255, 255, .1);
+        }
+        .tp-frame-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            margin: 2px 0;
+            border-radius: 6px;
+            font-family: Consolas, monospace;
+            font-size: .82em;
+            flex-wrap: wrap;
+        }
+        .tp-frame-row.frame1 {
+            background: rgba(255, 193, 7, .08);
+            border-left: 3px solid #ffc107;
+        }
+        .tp-frame-row.framemid {
+            background: rgba(33, 150, 243, .08);
+            border-left: 3px solid #2196f3;
+        }
+        .tp-frame-row.framelast {
+            background: rgba(0, 200, 83, .08);
+            border-left: 3px solid #00c853;
+        }
+        .tp-frame-row .tp-tag {
+            font-weight: bold;
+            font-size: .78em;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+        .tp-frame-row.frame1 .tp-tag {
+            background: #ffc107;
+            color: #000;
+        }
+        .tp-frame-row.framemid .tp-tag {
+            background: #2196f3;
+            color: #fff;
+        }
+        .tp-frame-row.framelast .tp-tag {
+            background: #00c853;
+            color: #000;
+        }
+        .tp-frame-row .tp-detail {
+            color: #aaa;
+            font-size: .85em;
+        }
+
+        .data-section-title {
+            color: var(--warn);
+            font-size: .9em;
+            font-weight: bold;
+            margin: 18px 0 10px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed rgba(255, 255, 255, .1);
+        }
+
+        .prop-card {
+            border-radius: 10px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, .08);
+            transition: box-shadow .2s;
+        }
+        .prop-card:hover {
+            box-shadow: 0 0 20px rgba(233, 68, 96, .15);
+        }
+        .prop-card.c0 {
+            background: rgba(33, 150, 243, .08);
+            border-left: 3px solid #2196f3;
+        }
+        .prop-card.c1 {
+            background: rgba(0, 200, 83, .08);
+            border-left: 3px solid #00c853;
+        }
+        .prop-card.c2 {
+            background: rgba(255, 193, 7, .08);
+            border-left: 3px solid #ffc107;
+        }
+        .prop-card.c3 {
+            background: rgba(156, 39, 176, .08);
+            border-left: 3px solid #9c27b0;
+        }
+        .prop-card.c4 {
+            background: rgba(233, 68, 96, .08);
+            border-left: 3px solid #e94560;
+        }
+        .prop-card.c5 {
+            background: rgba(0, 229, 255, .08);
+            border-left: 3px solid #00e5ff;
+        }
+        .prop-card.reserved {
+            background: rgba(255, 255, 255, .015);
+            border-left: 2px dashed rgba(255, 255, 255, .1);
+        }
+
+        .prop-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            font-size: .85em;
+            color: #aaa;
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+            flex-wrap: wrap;
+        }
+        .prop-card-header .byte-range {
+            font-family: Consolas, monospace;
+            font-weight: bold;
+            font-size: .95em;
+        }
+        .prop-card.c0 .byte-range {
+            color: #2196f3;
+        }
+        .prop-card.c1 .byte-range {
+            color: #00c853;
+        }
+        .prop-card.c2 .byte-range {
+            color: #ffc107;
+        }
+        .prop-card.c3 .byte-range {
+            color: #9c27b0;
+        }
+        .prop-card.c4 .byte-range {
+            color: #e94560;
+        }
+        .prop-card.c5 .byte-range {
+            color: #00e5ff;
+        }
+        .prop-card.reserved .byte-range {
+            color: #555;
+        }
+
+        .prop-card-body {
+            padding: 14px 18px;
+        }
+        .prop-card-body .raw-hex-block {
+            display: inline-flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .prop-card-body .raw-hex-block .hb {
+            background: #0d1b2a;
+            border: 1px solid rgba(255, 255, 255, .15);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+            font-size: 1em;
+            color: #00e5ff;
+        }
+        .prop-card-body .spn-name {
+            font-weight: bold;
+            font-size: .95em;
+            color: #ccc;
+            margin-bottom: 4px;
+        }
+        .prop-card-body .spn-desc {
+            font-size: .85em;
+            color: #999;
+            margin-bottom: 6px;
+            white-space: pre-line;
+        }
+        .prop-card-body .spn-result {
+            font-size: 1.05em;
+            font-weight: bold;
+            color: #69f0ae;
+            padding: 6px 12px;
+            background: rgba(105, 240, 174, .08);
+            border-radius: 6px;
+            display: inline-block;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+        .prop-card.reserved .spn-result {
+            background: rgba(255, 255, 255, .03);
+            color: #555;
+        }
+
+        .pgn-header {
+            background: linear-gradient(90deg, #0f3460, transparent);
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 14px;
+            font-weight: bold;
+            font-size: 1.02em;
+            line-height: 1.6;
+        }
+        .pgn-header .pgn-name {
+            color: var(--accent);
+            font-size: 1.1em;
+        }
+        .error-msg {
+            background: rgba(233, 68, 96, .15);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            padding: 12px;
+            color: #ff6b81;
+        }
+        .no-data {
+            text-align: center;
+            color: #555;
+            padding: 40px;
+            font-size: 1em;
+        }
+        .reassemble-info {
+            background: rgba(0, 200, 83, .08);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+        }
+        .reassemble-info b {
+            color: var(--success);
+        }
+        .address-info {
+            background: rgba(33, 150, 243, .08);
+            border: 1px solid var(--info);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+        }
+
+        @media(max-width:900px) {
+            .main-panel {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⚡ 充电机与充电模块国网通信协议解析器</h1>
+        <p>功率控制模块 ↔ 充电模块 | CAN2.0B 扩展帧 | PDU1 格式 | 125 kbit/s | 小端序</p>
+    </header>
+
+    <div class="container">
+
+        <div class="input-section">
+            <label><span class="dot"></span> CAN 报文输入（每行一帧：CAN_ID 数据域）</label>
+            <textarea id="msgInput" placeholder="单帧示例：&#10;0x1801A020 01 01 4E 20 DC 05 00 00&#10;&#10;多帧示例（定值设置/查询使用传输协议）：&#10;0x1880A020 01 01 04 20 0C 00 00 00&#10;0x1880A020 02 05 00 00 00 00 00 00&#10;0x1880A020 03 00 00 FF FF 00 00 00&#10;&#10;遥测帧示例：&#10;0x1820F4A0 41 00 4E 20 DC 05 01 00&#10;0x1821F4A0 00 00 00 00 00 00 00 00"></textarea>
+            <div class="hint">每行一帧。格式：CAN_ID（十六进制）+ 空格 + 数据字节（十六进制空格分隔）。支持单帧和多帧传输协议。</div>
+            <div class="mode-hint">💡 地址分配：功率控制模块 0xA0~0xAE（广播 0xAF），充电模块 0x20~0x9E（广播 0x9F）。输入多行同PGN帧 → 多帧重组解析</div>
+            <div class="btn-row">
+                <button class="btn btn-parse" onclick="parseMessage()">🔍 解析报文</button>
+                <button class="btn btn-clear" onclick="clearAll()">🗑 清空</button>
+                <button class="btn btn-example" onclick="loadExample('remote_fixed')">📋 遥控命令(固定)</button>
+                <button class="btn btn-example" onclick="loadExample('remote_resp')">📋 遥控应答</button>
+                <button class="btn btn-example" onclick="loadExample('telemetry1')">📋 遥信遥测帧1</button>
+                <button class="btn btn-example" onclick="loadExample('telemetry2')">📋 遥信遥测帧2</button>
+                <button class="btn btn-tp" onclick="loadExample('setting_tp')">🔗 定值设置(多帧)</button>
+                <button class="btn btn-tp" onclick="loadExample('query_tp')">🔗 定值查询(多帧)</button>
+                <button class="btn btn-example" onclick="loadExample('heartbeat')">💓 心跳帧</button>
+                <button class="btn btn-example" onclick="loadExample('group_set')">📋 分组设置</button>
+                <button class="btn btn-example" onclick="loadExample('remote_dynamic')">📋 遥控命令(动态)</button>
+            </div>
+        </div>
+
+        <div class="main-panel">
+            <div class="left-panel">
+                <div class="panel-header"><span class="dot-indicator" style="background:var(--info);"></span> CAN ID 报文识别 & 帧拆解</div>
+                <div class="panel-content" id="leftContent">
+                    <div class="no-data">👈 粘贴报文后点击"解析报文"</div>
+                </div>
+            </div>
+            <div class="right-panel">
+                <div class="panel-header"><span class="dot-indicator" style="background:var(--success);"></span> 数据域详细解析（Intel 小端序）</div>
+                <div class="panel-content" id="rightContent">
+                    <div class="no-data">👈 粘贴报文后点击"解析报文"</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================================================================
+        //  国网充电模块通信协议 — 完整 PGN 数据库
+        //  PGN = DP<<16 | PF<<8 | 0x00  (PDU1格式，PS=目标地址DA)
+        //  地址: 功率控制模块 0xA0~0xAE(广播0xAF), 充电模块 0x20~0x9E(广播0x9F)
+        // ===================================================================
+        const PGN_DB = {
+            // ==================== 命令帧 (Command Frames) ====================
+            0x000100: {
+                name: '遥控命令帧(固定分组)',
+                fullName: '固定分组模式遥控命令',
+                category: '命令帧',
+                phase: '充电控制',
+                source: '功率控制模块 → 充电模块',
+                period: '50~500ms，默认250ms',
+                priority: 6,
+                desc: '固定分组模式下，功率控制模块进行启动充电、参数调节、停止充电和装置地址显示等操作。',
+                data: [
+                    { bytes: [0], name: '控制字', desc: 'Bit7:预留\nBit6:充电回路主接触器状态(0=分断,1=闭合)\nBit5:功率分配回路接触器状态(0=分断,1=闭合)\nBit4:电压输出范围选择(0=低200-500V,1=高500-1000V)\nBit3~0:操作指令', format: 'ctrl_word_fixed' },
+                    { bytes: [1], name: '分组编码', desc: '广播地址时生效。Bit7~0分别对应第8~1组选择(0=未选,1=已选)', format: 'group_code_bits' },
+                    { bytes: [2, 3], name: '给定电压', desc: '分辨率0.1V/位，0~1000V，小端序', format: 'u16_0.1_le', unit: 'V' },
+                    { bytes: [4, 5], name: '给定电流', desc: '分辨率0.01A/位，0~600A，小端序', format: 'u16_0.01_le', unit: 'A' },
+                    { bytes: [6, 7], name: '电池电压', desc: '分辨率0.1V/位，0~1000V，小端序', format: 'u16_0.1_le', unit: 'V' }
+                ]
+            },
+            0x000200: {
+                name: '遥控应答帧(固定分组)',
+                fullName: '固定分组模式遥控应答',
+                category: '命令帧',
+                phase: '充电控制',
+                source: '充电模块 → 功率控制模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '充电模块收到遥控命令后回送应答。',
+                data: [
+                    { bytes: [0], name: '控制字', desc: 'Bit7:成功标识(0=失败,1=成功)\nBit6:充电回路主接触器状态\nBit5:功率分配回路接触器状态\nBit4:电压输出范围选择\nBit3~0:操作指令', format: 'ctrl_word_resp_fixed' },
+                    { bytes: [1], name: '分组编码', desc: '广播地址时生效。Bit7~0分别对应第8~1组选择', format: 'group_code_bits' },
+                    { bytes: [2, 3], name: '给定电压', desc: '分辨率0.1V/位，0~1000V', format: 'u16_0.1_le', unit: 'V' },
+                    { bytes: [4, 5], name: '给定电流', desc: '分辨率0.01A/位，0~600A', format: 'u16_0.01_le', unit: 'A' },
+                    { bytes: [6, 7], name: '电池电压', desc: '分辨率0.1V/位，0~1000V', format: 'u16_0.1_le', unit: 'V' }
+                ]
+            },
+            0x000300: {
+                name: '分组设置命令帧',
+                fullName: '动态分组模式分组设置命令',
+                category: '命令帧',
+                phase: '分组配置',
+                source: '功率控制模块 → 充电模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '动态分组模式下，对未分组的充电模块进行分组设置。',
+                data: [
+                    { bytes: [0], name: '命令码', desc: 'Bit7:预留\nBit6~5: 01=分组设置, 02=分组撤销\nBit4~3: 01=连续地址, 02=间断地址\nBit2~0:预留', format: 'group_cmd_code' },
+                    { bytes: [1], name: '组号', desc: '1~255', format: 'u8', unit: '' },
+                    { bytes: [2], name: '地址数目', desc: '1~255', format: 'u8', unit: '' },
+                    { bytes: [3, 4, 5, 6, 7], name: '地址信息', desc: '连续地址: byte3=起始地址, byte4=终止地址\n间断地址: 每个字节代表一个模块地址', format: 'addr_info' }
+                ]
+            },
+            0x000400: {
+                name: '分组设置应答帧',
+                fullName: '动态分组模式分组设置应答',
+                category: '命令帧',
+                phase: '分组配置',
+                source: '充电模块 → 功率控制模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '充电模块收到分组设置命令后回送应答。',
+                data: [
+                    { bytes: [0], name: '命令码', desc: 'Bit7:成功标识(0=失败,1=成功)\nBit6~5: 01=分组设置, 02=分组撤销\nBit4~3: 01=连续地址, 02=间断地址', format: 'group_resp_code' },
+                    { bytes: [1], name: '失败原因', desc: '0x00=成功, 0x01=使用中失败, 0x02=固定分组模式失败', format: 'group_fail_reason' }
+                ]
+            },
+            0x000500: {
+                name: '遥控命令帧(动态分组)',
+                fullName: '动态分组模式遥控命令',
+                category: '命令帧',
+                phase: '充电控制',
+                source: '功率控制模块 → 充电模块',
+                period: '50~500ms，默认250ms',
+                priority: 6,
+                desc: '动态分组模式下，功率控制模块进行启动充电、参数调节、停止充电和装置地址显示等操作。',
+                data: [
+                    { bytes: [0], name: '控制字', desc: 'Bit7:预留\nBit6:充电回路主接触器状态\nBit5:功率分配回路接触器状态\nBit4:电压输出范围选择\nBit3~0:操作指令(01=快速开机,02=停止充电保留分组,03=软启开机,04=显示地址,05=参数修改,06=停止充电清除分组)', format: 'ctrl_word_dynamic' },
+                    { bytes: [1], name: '分组编码', desc: '1~255', format: 'u8', unit: '' },
+                    { bytes: [2, 3], name: '给定电压', desc: '分辨率0.1V/位，0~1000V', format: 'u16_0.1_le', unit: 'V' },
+                    { bytes: [4, 5], name: '给定电流', desc: '分辨率0.01A/位，0~600A', format: 'u16_0.01_le', unit: 'A' },
+                    { bytes: [6, 7], name: '电池电压', desc: '分辨率0.1V/位，0~1000V', format: 'u16_0.1_le', unit: 'V' }
+                ]
+            },
+            0x000600: {
+                name: '遥控应答帧(动态分组)',
+                fullName: '动态分组模式遥控应答',
+                category: '命令帧',
+                phase: '充电控制',
+                source: '充电模块 → 功率控制模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '充电模块收到动态分组遥控命令后回送应答。',
+                data: [
+                    { bytes: [0], name: '控制字', desc: 'Bit7:成功标识(0=失败,1=成功)\nBit6:充电回路主接触器状态\nBit5:功率分配回路接触器状态\nBit4:电压输出范围选择\nBit3~0:操作指令', format: 'ctrl_word_resp_dynamic' },
+                    { bytes: [1], name: '分组编码', desc: '1~255', format: 'u8', unit: '' },
+                    { bytes: [2, 3], name: '给定电压', desc: '分辨率0.1V/位，0~1000V', format: 'u16_0.1_le', unit: 'V' },
+                    { bytes: [4, 5], name: '给定电流', desc: '分辨率0.01A/位，0~600A', format: 'u16_0.01_le', unit: 'A' },
+                    { bytes: [6, 7], name: '电池电压', desc: '分辨率0.1V/位，0~1000V', format: 'u16_0.1_le', unit: 'V' }
+                ]
+            },
+            0x008000: {
+                name: '定值设置命令帧',
+                fullName: '定值设置命令',
+                category: '命令帧',
+                phase: '参数配置',
+                source: '功率控制模块 → 充电模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '功率控制模块设定充电模块定值参数，使用传输协议传输。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '一桩多充时标记接口号，一桩一充为0，范围1~255', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '0x01=充电控制器(直流),0x02=充电控制器(交流),0x03=功率控制模块,0x04=充电模块,0x05=开关模块,0x06=环境信息采集模块', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '目标设备通信地址', format: 'u8_hex' },
+                    { bytes: [3, 4], name: '定值序号', desc: '1~200，参见定值信息表', format: 'u16_le', unit: '' },
+                    { bytes: [5], name: '预留', desc: '', format: 'u8' },
+                ]
+            },
+            0x008100: {
+                name: '定值设置应答帧',
+                fullName: '定值设置应答',
+                category: '命令帧',
+                phase: '参数配置',
+                source: '充电模块 → 功率控制模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '充电模块收到定值设置命令后回送应答，使用传输协议。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                    { bytes: [3, 4], name: '定值序号', desc: '1~200', format: 'u16_le', unit: '' },
+                    { bytes: [5], name: '操作返回', desc: 'Bit7:成功标识(0=失败,1=成功)\nBit6~4:预留\nBit3~0:失败原因(0=成功,1=无该定值,2=禁止写入,3=写入失败,4=给定越限)', format: 'setting_result' },
+                ]
+            },
+            0x008200: {
+                name: '定值查询命令帧',
+                fullName: '定值查询命令',
+                category: '命令帧',
+                phase: '参数配置',
+                source: '功率控制模块 → 充电模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '功率控制模块查询充电模块定值参数，使用传输协议。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                    { bytes: [3, 4], name: '定值序号', desc: '1~200', format: 'u16_le', unit: '' },
+                ]
+            },
+            0x008300: {
+                name: '定值查询应答帧',
+                fullName: '定值查询应答',
+                category: '命令帧',
+                phase: '参数配置',
+                source: '充电模块 → 功率控制模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '充电模块收到定值查询命令后回送应答，使用传输协议。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                    { bytes: [3, 4], name: '定值序号', desc: '1~200', format: 'u16_le', unit: '' },
+                    { bytes: [5], name: '操作返回', desc: 'Bit7:成功标识(0=失败,1=成功)\nBit6~4:预留\nBit3~0:失败原因(0=成功,1=无该定值,2=禁止读出,3=读出失败)', format: 'query_result' },
+                ]
+            },
+            // ==================== 数据帧 (Data Frames) ====================
+            0x002000: {
+                name: '遥信遥测帧1',
+                fullName: '遥信遥测数据帧1',
+                category: '数据帧',
+                phase: '运行阶段',
+                source: '充电模块 → 功率控制模块',
+                period: '100~10000ms，默认1000ms',
+                priority: 6,
+                desc: '充电模块周期性上送遥信遥测数据。',
+                data: [
+                    { bytes: [0], name: '状态', desc: 'Bit7~6:工作状态(01=待机,02=工作)\nBit5:告警状态(1=告警)\nBit4:故障状态(1=故障)\nBit3:分组模式(0=固定,1=动态)\nBit2~0:预留', format: 'module_status' },
+                    { bytes: [1], name: '告警故障', desc: 'Bit7:交流输入故障\nBit6:直流输出过压故障\nBit5:直流输出欠压故障\nBit4:过温故障\nBit3:直流输出短路故障\nBit2:风扇故障\nBit1:泄放故障\nBit0:其他故障', format: 'alarm_fault1' },
+                    { bytes: [2, 3], name: '直流输出电压', desc: '分辨率0.1V/位，0~1000V，小端序', format: 'u16_0.1_le', unit: 'V' },
+                    { bytes: [4, 5], name: '直流输出电流', desc: '分辨率0.01A/位，0~600A，小端序', format: 'u16_0.01_le', unit: 'A' },
+                    { bytes: [6], name: '当前组号', desc: '0~255，0表示尚未分组', format: 'u8', unit: '' },
+                    { bytes: [7], name: '预留', desc: '', format: 'u8' },
+                ]
+            },
+            0x002100: {
+                name: '遥信遥测帧2',
+                fullName: '遥信遥测数据帧2',
+                category: '数据帧',
+                phase: '运行阶段',
+                source: '充电模块 → 功率控制模块',
+                period: '100~10000ms，默认1000ms',
+                priority: 6,
+                desc: '充电模块周期性上送遥信遥测补充数据。',
+                data: [
+                    { bytes: [0, 1], name: '告警故障2', desc: 'Bit15:过温告警\nBit14:输出过流告警\nBit13:输入过压告警\nBit12:输入欠压告警\nBit11:输入缺相告警\nBit10:通信故障\nBit9:启动失败\nBit8:关机失败\nBit7:充电模块地址异常故障\nBit6~0:预留', format: 'alarm_fault2' },
+                    { bytes: [2, 3, 4, 5, 6, 7], name: '预留', desc: '6字节预留', format: 'hex' },
+                ]
+            },
+            // ==================== 心跳帧 (Heartbeat Frames) ====================
+            0x004000: {
+                name: '心跳帧(下行)',
+                fullName: '功率控制模块心跳帧',
+                category: '心跳帧',
+                phase: '各阶段',
+                source: '功率控制模块 → 充电模块',
+                period: '2000ms',
+                priority: 6,
+                desc: '功率控制模块周期性发送心跳，充电模块收到后可停止发送自身心跳以降低总线负载。',
+                data: [
+                    { bytes: [0, 1, 2, 3, 4, 5, 6, 7], name: '预留', desc: '8字节预留', format: 'hex' },
+                ]
+            },
+            0x004100: {
+                name: '心跳帧(上行)',
+                fullName: '充电模块心跳帧',
+                category: '心跳帧',
+                phase: '各阶段',
+                source: '充电模块 → 功率控制模块',
+                period: '2000ms',
+                priority: 6,
+                desc: '充电模块周期性发送心跳，收到功率控制模块心跳后可停止发送。',
+                data: [
+                    { bytes: [0, 1, 2, 3, 4, 5, 6, 7], name: '预留', desc: '8字节预留', format: 'hex' },
+                ]
+            },
+            // ==================== 程序在线更新帧 (Firmware Update) ====================
+            0x007000: {
+                name: '升级心跳帧',
+                fullName: '程序在线更新-升级心跳',
+                category: '程序在线更新',
+                phase: '固件升级',
+                source: '功率控制模块 → 充电模块',
+                period: '1000ms',
+                priority: 4,
+                desc: '进入升级模式后周期性发送，包含心跳计数值。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2, 3], name: '心跳计数值', desc: '0~65535，每次+1，到65535中止更新', format: 'u16_le' },
+                ]
+            },
+            0x007100: {
+                name: '升级心跳应答帧',
+                fullName: '程序在线更新-升级心跳应答',
+                category: '程序在线更新',
+                phase: '固件升级',
+                source: '充电模块 → 功率控制模块',
+                period: '1000ms',
+                priority: 4,
+                desc: '充电模块收到升级心跳后回复相同计数。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                    { bytes: [3, 4], name: '心跳计数值', desc: '最近收到的心跳命令计数值', format: 'u16_le' },
+                ]
+            },
+            0x007200: {
+                name: '启动下载命令帧',
+                fullName: '程序在线更新-启动下载命令',
+                category: '程序在线更新',
+                phase: '固件升级',
+                source: '功率控制模块 → 充电模块',
+                period: '500ms',
+                priority: 4,
+                desc: '启动程序在线更新流程。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                    { bytes: [3], name: '程序内部编号', desc: '0~255，单程序模块填0', format: 'u8' },
+                ]
+            },
+            0x007300: {
+                name: '启动下载应答帧',
+                fullName: '程序在线更新-启动下载应答',
+                category: '程序在线更新',
+                phase: '固件升级',
+                source: '充电模块 → 功率控制模块',
+                period: '500ms',
+                priority: 4,
+                desc: '充电模块判断是否允许程序更新并反馈。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                    { bytes: [3], name: '确认标识', desc: '0x00=允许下载, 0x01=禁止下载', format: 'confirm_flag' },
+                    { bytes: [4], name: '目标文件类型', desc: '0x01=Intel HEX, 0x02=tar.gz, 0xFF=其他', format: 'file_type' },
+                    { bytes: [5], name: '校验方案', desc: '0x01=方案A(字节流), 0x02=方案B(tar包)', format: 'check_scheme' },
+                    { bytes: [6], name: '禁止下载原因', desc: '0x00=无, 0x01=不支持此功能, 0x02=数据合法性校验失败', format: 'forbid_reason' },
+                ]
+            },
+            // ==================== 调试信息 ====================
+            0x008E00: {
+                name: '调试信息下行',
+                fullName: '调试信息下行命令帧',
+                category: '调试帧',
+                phase: '调试阶段',
+                source: '功率控制模块 → 充电模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '厂商自定义调试信息下行，使用传输协议。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                ]
+            },
+            0x008F00: {
+                name: '调试信息上行',
+                fullName: '调试信息上行应答帧',
+                category: '调试帧',
+                phase: '调试阶段',
+                source: '充电模块 → 功率控制模块',
+                period: '非周期报文',
+                priority: 6,
+                desc: '厂商自定义调试信息上行，使用传输协议。',
+                data: [
+                    { bytes: [0], name: '充电接口标识', desc: '', format: 'u8' },
+                    { bytes: [1], name: '设备类型', desc: '', format: 'dev_type' },
+                    { bytes: [2], name: '设备通信地址', desc: '', format: 'u8_hex' },
+                ]
+            },
+        };
+
+        // 定值信息表 (附录A)
+        const SETTING_TABLE = {
+            1: { name: '设备型号', len: 32, format: 'ascii', rw: '只读', desc: '设备厂商自行定义' },
+            2: { name: '预留', len: 2, format: 'hex', rw: '-', desc: '' },
+            3: { name: '设备序列号', len: 32, format: 'ascii', rw: '只读', desc: '设备厂商自行定义，保证唯一性' },
+            4: { name: '设备厂商编码', len: 4, format: 'hex', rw: '只读', desc: '国家电网统一编码分配' },
+            5: { name: '设备控制器硬件版本', len: 2, format: 'ver2', rw: '只读', desc: '主版本号+次版本号，如V1.00→01H 00H' },
+            6: { name: '设备控制器软件版本', len: 3, format: 'ver3', rw: '只读', desc: '主版本号+次版本号+发行版本号' },
+            7: { name: '设备控制器软件日期', len: 4, format: 'sw_date', rw: '只读', desc: 'Data1~2:年(LE), Data3:月, Data4:日' },
+            8: { name: '设备控制器软件校验码', len: 16, format: 'hex', rw: '只读', desc: 'CRC16/MD5等方式生成' },
+            9: { name: '设备运行模式', len: 1, format: 'run_mode', rw: '读写', desc: '0x00=正常模式, 0x01=调试模式' },
+            10: { name: '设备通信地址', len: 1, format: 'u8_hex', rw: '读写', desc: '地址范围参见7.1地址分配' },
+            11: { name: '设备通信超时时间', len: 1, format: 'timeout', rw: '读写', desc: '1~120秒，默认5秒' },
+            12: { name: '设备通信协议版本号', len: 2, format: 'ver2', rw: '只读', desc: '主版本号+次版本号' },
+            13: { name: '分组模式', len: 1, format: 'group_mode', rw: '读写', desc: '0x01=固定分组, 0x02=动态分组' },
+            14: { name: '输出电压范围是否分段', len: 1, format: 'seg_flag', rw: '只读', desc: '0x01=不分段, 0x02=分段' },
+            15: { name: '额定输出电压', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            16: { name: '额定输出电流', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+            17: { name: '最高输出电压', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            18: { name: '最低输出电压', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            19: { name: '最大输出电流', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+            20: { name: '最小输出电流', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+            21: { name: '高电压段输出电压上限', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '可选项' },
+            22: { name: '高电压段输出电压下限', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '可选项' },
+            23: { name: '高电压段最大输出电流', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '可选项' },
+            24: { name: '高电压段最小输出电流', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '可选项' },
+            25: { name: '低电压段输出电压上限', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '可选项' },
+            26: { name: '低电压段输出电压下限', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '可选项' },
+            27: { name: '低电压段最大输出电流', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '可选项' },
+            28: { name: '低电压段最小输出电流', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '可选项' },
+            29: { name: '遥信遥测报文上送周期', len: 1, format: 'u8', rw: '读写', unit: '秒', desc: '1~10秒，默认1秒' },
+            30: { name: '预留', len: 1, format: 'hex', rw: '-', desc: '' },
+            31: { name: '给定电压', len: 2, format: 'u16_0.1_le', rw: '读写', unit: 'V', desc: '可选项' },
+            32: { name: '给定电流', len: 2, format: 'u16_0.01_le', rw: '读写', unit: 'A', desc: '可选项' },
+            33: { name: '高电压段-最高输出电压点', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            34: { name: '高电压段-最高输出电压点-输出电流值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A',
+                desc: '' },
+            35: { name: '高电压段-恒功率输出下限电压点', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            36: { name: '高电压段-恒功率下限电压点-输出电流值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A',
+            desc: '' },
+            37: { name: '高电压段-最大电流输出-电压下限值', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            38: { name: '高电压段-最大电流输出值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+            39: { name: '高电压段-电压输出下限点', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            40: { name: '高电压段-电压输出下限点-输出电流值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+            41: { name: '低电压段-最高输出电压点', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            42: { name: '低电压段-最高输出电压点-输出电流值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+            43: { name: '低电压段-恒功率输出下限电压点', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            44: { name: '低电压段-恒功率下限电压点-输出电流值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A',
+            desc: '' },
+            45: { name: '低电压段-最大电流输出-电压下限值', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            46: { name: '低电压段-最大电流输出值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+            47: { name: '低电压段-电压输出下限点', len: 2, format: 'u16_0.1_le', rw: '只读', unit: 'V', desc: '' },
+            48: { name: '低电压段-电压输出下限点-输出电流值', len: 2, format: 'u16_0.01_le', rw: '只读', unit: 'A', desc: '' },
+        };
+
+        const DEV_TYPES = {
+            0x01: '充电控制器(直流充电机)',
+            0x02: '充电控制器(交流充电桩)',
+            0x03: '功率控制模块(直流充电机)',
+            0x04: '充电模块',
+            0x05: '开关模块',
+            0x06: '环境信息采集模块'
+        };
+
+        // 固定分组地址映射
+        const FIXED_GROUP_MAP = {
+            0x80: 1, 0x81: 1, 0x82: 1, 0x83: 1, 0x84: 1, 0x85: 1, 0x86: 1, 0x87: 1,
+            0x88: 2, 0x89: 2, 0x8A: 2, 0x8B: 2, 0x8C: 2, 0x8D: 2, 0x8E: 2, 0x8F: 2,
+            0x90: 3, 0x91: 3, 0x92: 3, 0x93: 3, 0x94: 3, 0x95: 3, 0x96: 3, 0x97: 3,
+            0x98: 4, 0x99: 4, 0x9A: 4, 0x9B: 4, 0x9C: 4, 0x9D: 4, 0x9E: 4,
+            0x60: 5, 0x61: 5, 0x62: 5, 0x63: 5, 0x64: 5, 0x65: 5, 0x66: 5, 0x67: 5,
+            0x68: 6, 0x69: 6, 0x6A: 6, 0x6B: 6, 0x6C: 6, 0x6D: 6, 0x6E: 6, 0x6F: 6,
+            0x70: 7, 0x71: 7, 0x72: 7, 0x73: 7, 0x74: 7, 0x75: 7, 0x76: 7, 0x77: 7,
+            0x78: 8, 0x79: 8, 0x7A: 8, 0x7B: 8, 0x7C: 8, 0x7D: 8, 0x7E: 8, 0x7F: 8,
+        };
+
+        // ===================================================================
+        //  CAN ID 解析
+        // ===================================================================
+        function parseCanId(id) {
+            const p = (id >>> 26) & 7;
+            const r = (id >>> 25) & 1;
+            const dp = (id >>> 24) & 1;
+            const pf = (id >>> 16) & 0xFF;
+            const ps = (id >>> 8) & 0xFF;
+            const sa = id & 0xFF;
+            const isPDU1 = pf < 240;
+            const pgn = isPDU1 ? ((dp << 16) | (pf << 8)) : ((dp << 16) | (pf << 8) | ps);
+            const da = isPDU1 ? ps : null;
+            return { id, hex: id.toString(16).toUpperCase().padStart(8, '0'), p, r, dp, pf, ps, sa, pgn, isPDU1, da };
+        }
+
+        function parseHexBytes(raw) {
+            const s = raw.replace(/\s+/g, '').replace(/0x/gi, '');
+            const d = [];
+            for (let i = 0; i < s.length; i += 2) {
+                if (i + 1 < s.length) {
+                    const v = parseInt(s.substring(i, i + 2), 16);
+                    if (!isNaN(v)) d.push(v);
+                }
+            }
+            return d;
+        }
+
+        function parseOneFrame(line) {
+            line = line.trim();
+            if (!line) return null;
+            let idStr, dataStr;
+            const hi = line.indexOf('#');
+            if (hi >= 0) { idStr = line.substring(0, hi);
+                dataStr = line.substring(hi + 1); } else { const parts = line.split(/\s+/);
+                idStr = parts[0];
+                dataStr = parts.slice(1).join(' '); }
+            const id = parseInt(idStr.replace(/^0x/i, ''), 16);
+            if (isNaN(id) || id > 0x1FFFFFFF) return null;
+            const data = parseHexBytes(dataStr);
+            while (data.length < 8) data.push(0);
+            return { canId: id, data: data.slice(0, 8), rawLine: line };
+        }
+
+        function leRaw(data, bytes) { let raw = 0; for (let i = 0; i < bytes.length; i++) { raw |= (data[bytes[i]] || 0) << (i *
+                8); } return raw >>> 0; }
+
+        function leBytes(raw, n) { const r = []; for (let i = 0; i < n; i++) { r.push(raw & 0xFF);
+                raw >>>= 8; } return r; }
+
+        function getSaDesc(sa) {
+            if (sa >= 0xA0 && sa <= 0xAE) return '功率控制模块(0x' + sa.toString(16).toUpperCase().padStart(2, '0') + ')';
+            if (sa === 0xAF) return '功率控制模块广播地址';
+            if (sa >= 0x20 && sa <= 0x9E) return '充电模块(0x' + sa.toString(16).toUpperCase().padStart(2, '0') + ')';
+            if (sa === 0x9F) return '充电模块广播地址';
+            return '未知设备';
+        }
+
+        function getDaDesc(da) {
+            if (da === null) return 'N/A (PDU2)';
+            if (da >= 0xA0 && da <= 0xAE) return '功率控制模块(0x' + da.toString(16).toUpperCase().padStart(2, '0') + ')';
+            if (da === 0xAF) return '功率控制模块广播地址';
+            if (da >= 0x20 && da <= 0x9E) return '充电模块(0x' + da.toString(16).toUpperCase().padStart(2, '0') + ')';
+            if (da === 0x9F) return '充电模块广播地址';
+            return '其他设备';
+        }
+
+        // ===================================================================
+        //  主解析入口
+        // ===================================================================
+        function parseMessage() {
+            const raw = document.getElementById('msgInput').value.trim();
+            if (!raw) { showError('请输入 CAN 报文'); return; }
+            const lines = raw.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
+            const frames = [];
+            for (const line of lines) { const f = parseOneFrame(line); if (f) frames.push(f); }
+            if (frames.length === 0) { showError('未能解析任何有效帧'); return; }
+
+            // 按 PGN 分组
+            const pgnGroups = {};
+            for (const f of frames) {
+                const ci = parseCanId(f.canId);
+                const key = ci.pgn;
+                if (!pgnGroups[key]) pgnGroups[key] = [];
+                pgnGroups[key].push({ ...f, ci });
+            }
+
+            // 判断是否多帧（同一 PGN 多帧）
+            const multiFrameKeys = Object.keys(pgnGroups).filter(k => pgnGroups[k].length > 1);
+            if (multiFrameKeys.length > 0 && frames.length > 1) {
+                // 取第一个多帧PGN
+                const mfKey = parseInt(multiFrameKeys[0]);
+                const mfFrames = pgnGroups[mfKey];
+                parseMultiFrame(mfFrames, frames);
+            } else {
+                const f = frames[0];
+                const ci = parseCanId(f.canId);
+                renderLeftSingle(ci, f.data);
+                renderRightPanel(ci, f.data);
+            }
+        }
+
+        // ===================================================================
+        //  多帧传输协议解析（国网自定义多帧协议）
+        //  帧1: 序号|总帧数|有效数据长度LSB|有效数据长度MSB|数据01~04
+        //  帧2~N-1: 序号|数据05~11...
+        //  最后帧: 序号|数据N|校验码LSB|校验码MSB|00 00 00 00
+        //  校验码 = sum(总帧数 ~ 数据N), 不含每帧序号
+        // ===================================================================
+        function parseMultiFrame(mfFrames, allFrames) {
+            // 按序号排序
+            mfFrames.sort((a, b) => a.data[0] - b.data[0]);
+            const firstFrame = mfFrames[0];
+            const totalFrames = firstFrame.data[1];
+            const dataLen = leRaw(firstFrame.data, [2, 3]);
+            const ci = firstFrame.ci;
+
+            // 重组数据
+            const reassembledData = [];
+            for (const f of mfFrames) {
+                const seq = f.data[0];
+                if (seq === 1) {
+                    // 帧1: 序号(1) + 总帧数(1) + 长度(2) + 数据(4) = 8
+                    for (let i = 4; i < 8; i++) reassembledData.push(f.data[i]);
+                } else if (seq === totalFrames) {
+                    // 最后帧: 序号(1) + 数据(N个) + 校验(2) + 填充(剩余)
+                    // 需要计算本帧有效数据量
+                    const usedSoFar = 4 + (totalFrames - 2) * 7; // 帧1贡献4字节，中间帧每帧贡献7字节
+                    const remainingBeforeThis = Math.min(usedSoFar, dataLen);
+                    const remaining = dataLen - remainingBeforeThis;
+                    const payloadBytes = Math.min(remaining, 7);
+                    for (let i = 1; i <= payloadBytes && i < 8; i++) reassembledData.push(f.data[i]);
+                    // 校验码在 payload 之后
+                    if (payloadBytes + 2 < 8) {
+                        const checksum = leRaw(f.data, [payloadBytes + 1, payloadBytes + 2]);
+                        reassembledData._checksum = checksum;
+                    }
+                } else {
+                    // 中间帧: 序号(1) + 数据(7) = 8
+                    for (let i = 1; i < 8; i++) reassembledData.push(f.data[i]);
+                }
+            }
+            // 截断到有效长度
+            const finalData = reassembledData.slice(0, dataLen);
+            const checksum = reassembledData._checksum;
+
+            // 计算校验码
+            let calcChecksum = 0;
+            const allBytes = [];
+            for (const f of mfFrames) {
+                if (f.data[0] === 1) {
+                    // 从总帧数开始
+                    for (let i = 1; i < 8; i++) allBytes.push(f.data[i]);
+                } else {
+                    for (let i = 1; i < 8; i++) allBytes.push(f.data[i]);
+                }
+            }
+            // 取有效长度内的字节（不含每帧序号）
+            for (let i = 0; i < Math.min(dataLen + 2, allBytes.length); i++) {
+                if (i < dataLen) calcChecksum = (calcChecksum + allBytes[i]) & 0xFFFF;
+            }
+
+            // 左栏：多帧拆解
+            let leftH = '';
+            leftH +=
+                '<div class="tp-section-title">🔗 多帧传输协议（国网自定义TP）帧拆解 — 共 ' + mfFrames.length + ' 帧（总帧数=' +
+                totalFrames + '）</div><div class="tp-section">';
+            for (const f of mfFrames) {
+                const idHex = '0x' + f.ci.hex;
+                const dataHex = f.data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+                const seq = f.data[0];
+                let cls = 'framemid';
+                if (seq === 1) cls = 'frame1';
+                else if (seq === totalFrames) cls = 'framelast';
+                let detail = '序号: ' + seq;
+                if (seq === 1) detail += ' | 总帧数: ' + f.data[1] + ' | 数据长度: ' + dataLen + ' 字节';
+                if (seq === totalFrames && checksum !== undefined) {
+                    detail += ' | 校验码: 0x' + checksum.toString(16).toUpperCase().padStart(4, '0');
+                    const chkOk = checksum === calcChecksum;
+                    detail += chkOk ? ' ✅ 校验通过' : ' ❌ 校验不通过(计算值:0x' + calcChecksum.toString(16).toUpperCase()
+                        .padStart(4, '0') + ')';
+                }
+                leftH += '<div class="tp-frame-row ' + cls + '"><span class="tp-tag">' + (cls === 'frame1' ? '首帧' : cls ===
+                    'framelast' ? '末帧' : '中间帧') + '</span><span style="color:#00e5ff;">' + idHex +
+                    '</span><span style="color:#aaa;">' + dataHex + '</span><span class="tp-detail">' + detail +
+                    '</span></div>';
+            }
+            leftH += '</div>';
+
+            const pi = PGN_DB[ci.pgn];
+            const pn = pi ? pi.name + ' — ' + pi.fullName : '未知PGN';
+            const dhs = finalData.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+            leftH += '<div class="reassemble-info"><b>✅ 重组完成</b><br>目标PGN: <span style="color:#00e5ff;">0x' + ci.pgn
+                .toString(16).toUpperCase().padStart(6, '0') + '</span> (' + pn + ')<br>数据长度: <span style="color:#69f0ae;">' +
+                finalData.length + ' 字节</span>（有效数据长度: ' + dataLen + ' 字节）<br>重组数据: <code style="color:#00e5ff;word-break:break-all;">' +
+                dhs + '</code></div>';
+
+            // 校验信息
+            if (checksum !== undefined) {
+                const chkOk = checksum === calcChecksum;
+                leftH += '<div class="reassemble-info" style="' + (chkOk ? '' : 'border-color:var(--accent);background:rgba(233,68,96,.08);') +
+                    '"><b>' + (chkOk ? '✅ 校验通过' : '❌ 校验失败') +
+                    '</b><br>接收校验码: 0x' + checksum.toString(16).toUpperCase().padStart(4, '0') +
+                    '<br>计算校验码: 0x' + calcChecksum.toString(16).toUpperCase().padStart(4, '0') +
+                    '<br><span style="font-size:.8em;color:#888;">校验范围：总帧数字节 ~ 有效数据N字节（不含每帧序号），累加和取低16位</span></div>';
+            }
+
+            document.getElementById('leftContent').innerHTML = leftH;
+            renderRightPanel(ci, finalData);
+        }
+
+        // ===================================================================
+        //  左栏：单帧 CAN ID 拆解
+        // ===================================================================
+        function renderLeftSingle(ci, data) {
+            const ph = '0x' + ci.pgn.toString(16).toUpperCase().padStart(6, '0');
+            const pi = PGN_DB[ci.pgn];
+            let h = '';
+
+            // 地址信息
+            const saDesc = getSaDesc(ci.sa);
+            const daDesc = getDaDesc(ci.da);
+            const fixedGroup = FIXED_GROUP_MAP[ci.sa] || (FIXED_GROUP_MAP[ci.da] || null);
+
+            if (pi) {
+                h += '<div class="msg-identify"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.5em;">📋</span><span class="msg-name">' +
+                    pi.name + ' — ' + pi.fullName + '</span></div><div class="msg-meta"><div>PGN: <span>' + ph + ' (' + ci
+                    .pgn + ')</span></div><div>分类: <span>' + pi.category + '</span></div><div>阶段: <span>' + pi.phase +
+                    '</span></div><div>方向: <span>' + pi.source + '</span></div><div>周期: <span>' + pi.period +
+                    '</span></div><div>优先级: <span>' + pi.priority + '</span></div></div><div style="margin-top:8px;font-size:.85em;color:#bbb;">' +
+                    (pi.desc || '') + '</div></div>';
+            } else {
+                h += '<div class="msg-identify unknown"><span style="font-size:1.5em;">❓</span> <span class="msg-name">未识别的报文</span><div class="msg-meta"><div>PGN: <span>' +
+                    ph + '</span></div></div></div>';
+            }
+
+            // 地址信息
+            h += '<div class="address-info">📍 <b>地址信息：</b>源地址 SA=<span style="color:#69f0ae;">0x' + ci.sa.toString(16)
+                .toUpperCase().padStart(2, '0') + ' (' + saDesc + ')</span> | 目的地址 DA=<span style="color:#ffab40;">0x' + (ci
+                    .da !== null ? ci.da.toString(16).toUpperCase().padStart(2, '0') : 'N/A') + ' (' + daDesc +
+                ')</span>' + (fixedGroup ? ' | 固定分组: <span style="color:#e94560;">第' + fixedGroup + '组</span>' : '') +
+                '</div>';
+
+            // 帧信息
+            h += '<div class="frame-info"><div class="info-badge">CAN ID: <span>0x' + ci.hex + '</span></div><div class="info-badge">DLC: <span>' +
+                data.length + '</span></div><div class="info-badge">PF=<span>0x' + ci.pf.toString(16).toUpperCase().padStart(
+                    2, '0') + ' (' + ci.pf + ')</span></div><div class="info-badge">PS(DA)=<span>0x' + ci.ps.toString(16)
+                .toUpperCase().padStart(2, '0') + ' (' + ci.ps + ')</span></div><div class="info-badge">SA=<span>0x' + ci.sa
+                .toString(16).toUpperCase().padStart(2, '0') + ' (' + ci.sa + ')</span></div><div class="info-badge">类型: <span>' +
+                (ci.isPDU1 ? 'PDU1 (点对点)' : 'PDU2 (广播)') + '</span></div></div>';
+
+            // CAN ID 位域表
+            h += '<table class="field-table"><thead><tr><th>字段</th><th>位</th><th>Hex</th><th>二进制</th><th>值</th><th>含义</th></tr></thead><tbody>';
+            h += ir('P', ci.p, 3, 26) + ir('R', ci.r, 1, 25) + ir('DP', ci.dp, 1, 24) + ir('PF', ci.pf, 8, 16) + ir('PS(DA)',
+                ci.ps, 8, 8) + ir('SA', ci.sa, 8, 0);
+            h += '</tbody></table>';
+
+            // 二进制可视化
+            const fb = ci.id.toString(2).padStart(29, '0');
+            h +=
+                '<div style="margin-top:14px;"><b>🔢 29-bit 二进制：</b></div><div style="word-break:break-all;font-family:Consolas,monospace;font-size:.85em;margin-top:4px;line-height:1.8;"><span style="color:#e94560;border-bottom:2px solid #e94560;">' +
+                fb.substring(0, 3) + '</span><span style="color:#888;">' + fb.substring(3, 4) +
+                '</span><span style="color:#ffc107;border-bottom:2px solid #ffc107;">' + fb.substring(4, 5) +
+                '</span><span style="color:#2196f3;border-bottom:2px solid #2196f3;">' + fb.substring(5, 13) +
+                '</span><span style="color:#69f0ae;border-bottom:2px solid #69f0ae;">' + fb.substring(13, 21) +
+                '</span><span style="color:#ce93d8;border-bottom:2px solid #ce93d8;">' + fb.substring(21, 29) +
+                '</span></div><div style="font-size:.72em;color:#888;margin-top:3px;"><span style="color:#e94560;">P</span> <span style="color:#888;">R</span> <span style="color:#ffc107;">DP</span> <span style="color:#2196f3;">PF</span> <span style="color:#69f0ae;">PS(DA)</span> <span style="color:#ce93d8;">SA</span></div>';
+
+            document.getElementById('leftContent').innerHTML = h;
+
+            function ir(name, val, bits, shift) {
+                const hv = val.toString(16).toUpperCase(),
+                    bv = val.toString(2).padStart(bits, '0');
+                const descs = {
+                    'P': '0=最高优先级, 7=最低优先级',
+                    'R': '保留位=0',
+                    'DP': '数据页=0',
+                    'PF': ci.isPDU1 ? 'PF<' + 240 + '→PDU1(点对点)' : 'PF≥' + 240 + '→PDU2(广播)',
+                    'PS(DA)': ci.isPDU1 ? '目标地址 DA: ' + getDaDesc(ci.da) : '组扩展 GE',
+                    'SA': '源地址: ' + getSaDesc(ci.sa)
+                };
+                return '<tr><td><b>' + name + '</b></td><td>[' + (shift + bits - 1) + ':' + shift +
+                    ']</td><td class="val-hex">0x' + hv + '</td><td class="val-bin">' + bv +
+                    '</td><td class="val-dec">' + val + '</td><td>' + descs[name] + '</td></tr>';
+            }
+        }
+
+        // ===================================================================
+        //  右栏：数据域解析
+        // ===================================================================
+        function renderRightPanel(ci, data) {
+            const pi = PGN_DB[ci.pgn];
+            let h = '';
+
+            if (pi) {
+                h += '<div class="pgn-header">📋 <span class="pgn-name">' + pi.name + '</span> — ' + pi.fullName + ' | ' + pi
+                    .category + ' | ' + pi.source + ' | 周期:' + pi.period + '</div>';
+                h += '<div class="data-section-title">📊 数据域字段解析（Intel 小端序 / 低字节先发送）</div>';
+
+                const cards = [];
+                pi.data.forEach((it, idx) => {
+                    const maxByte = Math.max(...it.bytes);
+                    if (maxByte >= data.length) return;
+                    const rbs = it.bytes.map(b => data[b] !== undefined ? data[b] : 0);
+                    const raw = leRaw(data, it.bytes);
+                    cards.push({ ...it, rawBytes: rbs, raw, colorIdx: idx % 6 });
+                });
+
+                for (let b = 0; b < data.length; b++) {
+                    const card = cards.find(c => c.bytes[0] === b);
+                    if (card) {
+                        h += propCard(card, 'c' + card.colorIdx);
+                        b = card.bytes[card.bytes.length - 1];
+                    } else {
+                        h += propCard({ bytes: [b], rawBytes: [data[b]], raw: data[b], name: '保留/未定义',
+                            desc: '协议未定义此字节', format: 'u8', unit: '', colorIdx: -1 }, 'reserved');
+                    }
+                }
+
+                // 如果是定值相关帧，显示定值信息表引用
+                if ([0x008000, 0x008100, 0x008200, 0x008300].includes(ci.pgn)) {
+                    const settingNo = data.length >= 5 ? leRaw(data, [3, 4]) : null;
+                    if (settingNo && SETTING_TABLE[settingNo]) {
+                        const st = SETTING_TABLE[settingNo];
+                        h += '<div class="data-section-title" style="margin-top:16px;">📋 定值序号 ' + settingNo +
+                            ' 对应定值信息</div>';
+                        h += '<div class="prop-card c5"><div class="prop-card-header"><span class="byte-range" style="color:#00e5ff;">定值序号 ' +
+                            settingNo + '</span></div><div class="prop-card-body"><div class="spn-name">' + st.name +
+                            '</div><div class="spn-desc">长度: ' + st.len + ' 字节 | 权限: ' + st.rw + ' | 格式: ' + st.format +
+                            (st.unit ? ' | 单位: ' + st.unit : '') + '</div><div class="spn-desc">' + (st.desc || '') +
+                            '</div></div></div>';
+                    }
+                }
+            } else {
+                h += '<div class="pgn-header">⚠️ 未识别的 PGN: 0x' + ci.pgn.toString(16).toUpperCase().padStart(6, '0') +
+                    '</div>';
+                for (let b = 0; b < data.length; b++) {
+                    h += propCard({ bytes: [b], rawBytes: [data[b]], raw: data[b], name: 'Byte ' + b, desc: '原始数据字节',
+                        format: 'u8', unit: '', colorIdx: -1 }, 'reserved');
+                }
+            }
+            document.getElementById('rightContent').innerHTML = h;
+        }
+
+        function propCard(card, cls) {
+            const { bytes, rawBytes, raw, name, desc, format, unit } = card;
+            const bl = bytes.length === 1 ? 'Byte ' + bytes[0] : 'Bytes [' + bytes[0] + ' : ' + bytes[bytes.length - 1] + ']';
+            const hv = '0x' + raw.toString(16).toUpperCase().padStart(bytes.length * 2, '0');
+            const r = fmtVal(raw, rawBytes, format, unit || '');
+            const rbs = rawBytes.map(b => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+            return '<div class="prop-card ' + cls + '"><div class="prop-card-header"><span class="byte-range">📌 ' + bl +
+                '</span><span style="color:#888;">小端序拼装: <code style="color:#00e5ff;">' + hv +
+                '</code></span><span style="color:#888;font-size:.8em;">(原始字节: ' + rbs +
+                ')</span></div><div class="prop-card-body"><div class="raw-hex-block">' + rawBytes.map((b, i) =>
+                    '<span class="hb">[' + bytes[i] + '] 0x' + b.toString(16).toUpperCase().padStart(2, '0') +
+                    '</span>').join('') + '</div><div class="spn-name">' + name +
+                '</div><div class="spn-desc">' + (desc || '') + '</div><div class="spn-result">= ' + r +
+                '</div></div></div>';
+        }
+
+        function fmtVal(raw, rawBytes, f, u) {
+            const un = u ? ' ' + u : '';
+            switch (f) {
+                case 'u8':
+                    return raw + un;
+                case 'u8_hex':
+                    return '0x' + raw.toString(16).toUpperCase().padStart(2, '0') + un;
+                case 'u16_le':
+                    return raw + un;
+                case 'u32_le':
+                    return raw + un;
+                case 'u16_0.1_le':
+                    return (raw * 0.1).toFixed(1) + un;
+                case 'u16_0.01_le':
+                    return (raw * 0.01).toFixed(2) + un;
+                case 'u24_le':
+                    return raw + un;
+                case 'ver2': {
+                    const b = leBytes(raw, 2);
+                    return 'V' + b[0] + '.' + b[1].toString().padStart(2, '0');
+                }
+                case 'ver3': {
+                    const b = leBytes(raw, 3);
+                    return 'V' + b[0] + '.' + b[1].toString().padStart(2, '0') + '.' + b[2].toString().padStart(2, '0');
+                }
+                case 'sw_date': {
+                    const b = leBytes(raw, 4);
+                    const year = b[0] | (b[1] << 8);
+                    return year + '年' + b[2] + '月' + b[3] + '日';
+                }
+                case 'ascii': {
+                    return rawBytes.map(c => c >= 32 && c <= 126 ? String.fromCharCode(c) : '.').join('').trim();
+                }
+                case 'hex':
+                    return '0x' + raw.toString(16).toUpperCase().padStart(rawBytes.length * 2, '0');
+                case 'dev_type':
+                    return DEV_TYPES[raw] || '未知(0x' + raw.toString(16).toUpperCase() + ')';
+                case 'run_mode':
+                    return raw === 0x00 ? '正常模式' : raw === 0x01 ? '调试模式' : '未知';
+                case 'group_mode':
+                    return raw === 0x01 ? '固定分组模式' : raw === 0x02 ? '动态分组模式' : '未知';
+                case 'seg_flag':
+                    return raw === 0x01 ? '输出电压不分段' : raw === 0x02 ? '输出电压分段' : '未知';
+                case 'timeout':
+                    return raw + ' 秒' + (raw === 5 ? ' (默认值)' : '');
+                case 'confirm_flag':
+                    return raw === 0x00 ? '✅ 允许下载' : raw === 0x01 ? '❌ 禁止下载' : '无效';
+                case 'file_type':
+                    return raw === 0x01 ? 'Intel HEX格式' : raw === 0x02 ? 'tar.gz格式' : raw === 0xFF ? '其他类型(待扩充)' :
+                        '未知';
+                case 'check_scheme':
+                    return raw === 0x01 ? '校验方案A(字节流)' : raw === 0x02 ? '校验方案B(tar包)' : '未知';
+                case 'forbid_reason':
+                    return raw === 0x00 ? '无' : raw === 0x01 ? '本身不支持此功能' : raw === 0x02 ? '数据合法性校验失败' : '未知';
+                case 'setting_result': {
+                    const ok = (raw & 0x80) ? '✅ 成功' : '❌ 失败';
+                    const reasonCode = raw & 0x0F;
+                    const reasons = { 0x00: '成功', 0x01: '无该定值', 0x02: '禁止写入', 0x03: '写入失败', 0x04: '给定越限' };
+                    return ok + ' | 原因: ' + (reasons[reasonCode] || '未知');
+                }
+                case 'query_result': {
+                    const ok = (raw & 0x80) ? '✅ 成功' : '❌ 失败';
+                    const reasonCode = raw & 0x0F;
+                    const reasons = { 0x00: '成功', 0x01: '无该定值', 0x02: '禁止读出', 0x03: '读出失败' };
+                    return ok + ' | 原因: ' + (reasons[reasonCode] || '未知');
+                }
+                    // 控制字解析
+                case 'ctrl_word_fixed': {
+                    const ops = { 0x01: '快速开机(绝缘检测)', 0x02: '停止充电', 0x03: '软启开机(预启动)', 0x04: '显示地址', 0x05: '参数修改' };
+                    const op = raw & 0x0F;
+                    const vRange = (raw >> 4) & 1;
+                    const pwrAlloc = (raw >> 5) & 1;
+                    const mainContactor = (raw >> 6) & 1;
+                    return '操作指令: ' + (ops[op] || '未知(0x' + op.toString(16) + ')') +
+                        '\n电压范围: ' + (vRange === 0 ? '低电压段(200~500V)' : '高电压段(500~1000V)') +
+                        '\n充电回路主接触器: ' + (mainContactor === 0 ? '分断' : '闭合') +
+                        '\n功率分配回路接触器: ' + (pwrAlloc === 0 ? '分断' : '闭合');
+                }
+                case 'ctrl_word_resp_fixed': {
+                    const ops = { 0x01: '快速开机', 0x02: '停止充电', 0x03: '软启开机', 0x04: '显示地址', 0x05: '参数修改' };
+                    const op = raw & 0x0F;
+                    const ok = (raw & 0x80) ? '✅ 成功' : '❌ 失败';
+                    const vRange = (raw >> 4) & 1;
+                    const pwrAlloc = (raw >> 5) & 1;
+                    const mainContactor = (raw >> 6) & 1;
+                    return ok + '\n操作指令: ' + (ops[op] || '未知') +
+                        '\n电压范围: ' + (vRange === 0 ? '低电压段(200~500V)' : '高电压段(500~1000V)') +
+                        '\n充电回路主接触器: ' + (mainContactor === 0 ? '分断' : '闭合') +
+                        '\n功率分配回路接触器: ' + (pwrAlloc === 0 ? '分断' : '闭合');
+                }
+                case 'ctrl_word_dynamic': {
+                    const ops = { 0x01: '快速开机(绝缘检测)', 0x02: '停止充电(保留分组)', 0x03: '软启开机(预启动)', 0x04: '显示地址', 0x05: '参数修改',
+                        0x06: '停止充电(清除分组)' };
+                    const op = raw & 0x0F;
+                    const vRange = (raw >> 4) & 1;
+                    const pwrAlloc = (raw >> 5) & 1;
+                    const mainContactor = (raw >> 6) & 1;
+                    return '操作指令: ' + (ops[op] || '未知(0x' + op.toString(16) + ')') +
+                        '\n电压范围: ' + (vRange === 0 ? '低电压段(200~500V)' : '高电压段(500~1000V)') +
+                        '\n充电回路主接触器: ' + (mainContactor === 0 ? '分断' : '闭合') +
+                        '\n功率分配回路接触器: ' + (pwrAlloc === 0 ? '分断' : '闭合');
+                }
+                case 'ctrl_word_resp_dynamic': {
+                    const ops = { 0x01: '快速开机', 0x02: '停止充电', 0x03: '软启开机', 0x04: '显示地址', 0x05: '参数修改', 0x06: '停止充电(清除分组)' };
+                    const op = raw & 0x0F;
+                    const ok = (raw & 0x80) ? '✅ 成功' : '❌ 失败';
+                    const vRange = (raw >> 4) & 1;
+                    const pwrAlloc = (raw >> 5) & 1;
+                    const mainContactor = (raw >> 6) & 1;
+                    return ok + '\n操作指令: ' + (ops[op] || '未知') +
+                        '\n电压范围: ' + (vRange === 0 ? '低电压段(200~500V)' : '高电压段(500~1000V)') +
+                        '\n充电回路主接触器: ' + (mainContactor === 0 ? '分断' : '闭合') +
+                        '\n功率分配回路接触器: ' + (pwrAlloc === 0 ? '分断' : '闭合');
+                }
+                    // 分组编码位
+                case 'group_code_bits': {
+                    const groups = [];
+                    for (let i = 0; i < 8; i++) {
+                        const selected = (raw >> i) & 1;
+                        groups.push('第' + (i + 1) + '组:' + (selected ? '✅已选' : '○未选'));
+                    }
+                    return groups.join('\n');
+                }
+                    // 分组命令码
+                case 'group_cmd_code': {
+                    const cmd = (raw >> 5) & 3;
+                    const addrMode = (raw >> 3) & 3;
+                    const cmdStr = cmd === 1 ? '分组设置' : cmd === 2 ? '分组撤销' : '未知';
+                    const addrStr = addrMode === 1 ? '连续地址' : addrMode === 2 ? '间断地址' : '未知';
+                    return '命令: ' + cmdStr + '\n地址模式: ' + addrStr;
+                }
+                case 'group_resp_code': {
+                    const ok = (raw & 0x80) ? '✅ 成功' : '❌ 失败';
+                    const cmd = (raw >> 5) & 3;
+                    const addrMode = (raw >> 3) & 3;
+                    const cmdStr = cmd === 1 ? '分组设置' : cmd === 2 ? '分组撤销' : '未知';
+                    const addrStr = addrMode === 1 ? '连续地址' : addrMode === 2 ? '间断地址' : '未知';
+                    return ok + '\n命令: ' + cmdStr + '\n地址模式: ' + addrStr;
+                }
+                case 'group_fail_reason': {
+                    if (raw === 0x00) return '✅ 成功';
+                    if (raw === 0x01) return '❌ 使用中，分组设置/撤销失败';
+                    if (raw === 0x02) return '❌ 固定分组模式下，分组设置/撤销失败';
+                    return '未知原因(0x' + raw.toString(16) + ')';
+                }
+                case 'addr_info': {
+                    return rawBytes.map(b => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(' ') +
+                        '\n(连续地址: 首字节=起始地址, 第2字节=终止地址; 间断地址: 每个字节代表一个模块地址)';
+                }
+                    // 模块状态
+                case 'module_status': {
+                    const workState = (raw >> 6) & 3;
+                    const alarm = (raw >> 5) & 1;
+                    const fault = (raw >> 4) & 1;
+                    const groupMode = (raw >> 3) & 1;
+                    const ws = workState === 1 ? '待机状态' : workState === 2 ? '工作状态' : '未知';
+                    return '工作状态: ' + ws +
+                        '\n告警: ' + (alarm ? '⚠️ 告警' : '正常') +
+                        '\n故障: ' + (fault ? '❌ 故障' : '正常') +
+                        '\n分组模式: ' + (groupMode === 0 ? '固定分组' : '动态分组');
+                }
+                    // 告警故障1
+                case 'alarm_fault1': {
+                    const bits = [
+                        '交流输入故障', '直流输出过压故障', '直流输出欠压故障', '过温故障',
+                        '直流输出短路故障', '风扇故障', '泄放故障', '其他故障'
+                    ];
+                    return bits.map((name, i) => {
+                        const v = (raw >> (7 - i)) & 1;
+                        return name + ': ' + (v ? '❌ 故障' : '✅ 正常');
+                    }).join('\n');
+                }
+                    // 告警故障2
+                case 'alarm_fault2': {
+                    const bits = [
+                        '过温告警', '输出过流告警', '输入过压告警', '输入欠压告警',
+                        '输入缺相告警', '通信故障', '启动失败', '关机失败',
+                        '充电模块地址异常故障', '预留', '预留', '预留', '预留', '预留', '预留', '预留'
+                    ];
+                    return bits.map((name, i) => {
+                        const v = (raw >> (15 - i)) & 1;
+                        return name + ': ' + (v ? '❌ 故障' : '✅ 正常');
+                    }).join('\n');
+                }
+                default:
+                    return raw + un;
+            }
+        }
+
+        // ===================================================================
+        //  辅助函数
+        // ===================================================================
+        function showError(m) {
+            document.getElementById('leftContent').innerHTML = '<div class="error-msg">❌ ' + m + '</div>';
+            document.getElementById('rightContent').innerHTML = '<div class="no-data">请修正后重新解析</div>';
+        }
+
+        function clearAll() {
+            document.getElementById('msgInput').value = '';
+            document.getElementById('leftContent').innerHTML = '<div class="no-data">👈 粘贴报文后点击解析</div>';
+            document.getElementById('rightContent').innerHTML = '<div class="no-data">👈 粘贴报文后点击解析</div>';
+        }
+
+        function loadExample(t) {
+            const ex = {
+                // 遥控命令帧(固定分组): PGN=0x000100, PF=0x01, 功率控制模块(SA=0xA0)→充电模块(DA=0x20)
+                // ID = P(6)<<26 | R(0)<<25 | DP(0)<<24 | PF(0x01)<<16 | PS(DA=0x20)<<8 | SA(0xA0)
+                // = 0x18<<24 | 0x01<<16 | 0x20<<8 | 0xA0 = 0x180120A0
+                'remote_fixed': '0x180120A0 01 01 4E 20 DC 05 00 00',
+                // 遥控应答帧(固定分组): PGN=0x000200, PF=0x02, 充电模块(SA=0x20)→功率控制模块(DA=0xA0)
+                'remote_resp': '0x1802A020 81 01 4E 20 DC 05 00 00',
+                // 遥信遥测帧1: PGN=0x002000, PF=0x20, 充电模块(SA=0x20)→功率控制模块(DA=0xA0)
+                // 状态=待机(0x41), 告警故障=正常(0x00), 输出电压=0.0V, 输出电流=0.0A, 组号=1
+                'telemetry1': '0x1820A020 41 00 00 00 00 00 01 00',
+                // 遥信遥测帧2: PGN=0x002100, PF=0x21
+                'telemetry2': '0x1821A020 00 00 00 00 00 00 00 00',
+                // 定值设置多帧: PGN=0x008000, PF=0x80
+                'setting_tp': '0x1880A020 01 03 0B 00 01 04 20 0C\n0x1880A020 02 05 00 00 00 00 00 00\n0x1880A020 03 00 00 FF FF 00 00 00',
+                // 定值查询多帧: PGN=0x008200, PF=0x82
+                'query_tp': '0x1882A020 01 01 04 20 0A 00 00 00\n0x1882A020 02 00 00 00 00 00 00 00',
+                // 心跳帧(下行): PGN=0x004000, PF=0x40
+                'heartbeat': '0x18409FA0 00 00 00 00 00 00 00 00',
+                // 分组设置命令帧: PGN=0x000300, PF=0x03
+                'group_set': '0x1803A020 21 01 01 20 21 00 00 00',
+                // 遥控命令(动态分组): PGN=0x000500, PF=0x05
+                'remote_dynamic': '0x18059FA0 01 01 4E 20 DC 05 00 00',
+            };
+            if (ex[t]) { document.getElementById('msgInput').value = ex[t];
+                parseMessage(); }
+        }
+
+        // 页面加载时自动填充一个示例
+        window.addEventListener('DOMContentLoaded', function() {
+            // 预填遥测帧示例，方便用户快速体验
+            document.getElementById('msgInput').value = '0x1820A020 41 00 4E 20 DC 05 01 00';
+            parseMessage();
+        });
+    </script>
+</body>
+</html>
